@@ -31,7 +31,7 @@ public:
     static_assert(std::is_same<CharT, typename Traits::char_type>::value, "char traits need to refer to base type");
 
     constexpr basic_string_view() noexcept
-        : data_ptr{nullptr}, sz{0u}
+        : sz{0u}, data_ptr{nullptr}
     {
     }
 
@@ -39,12 +39,12 @@ public:
     constexpr basic_string_view& operator=(const basic_string_view& ) noexcept = default;
 
     constexpr basic_string_view(const_pointer c)
-        : data_ptr{c}, sz{c == nullptr ? 0ull : traits_type::length(c)}
+        : sz{c == nullptr ? 0ull : traits_type::length(c)}, data_ptr{c}
     {
     }
 
     constexpr basic_string_view(const_pointer c, size_type n)
-        : data_ptr{c}, sz{n}
+        : sz{n}, data_ptr{c}
     {
     }
 
@@ -132,26 +132,26 @@ public:
             return sz < v.sz ? -1 : (sz > v.sz ? 1 : 0);
     }
 
-    constexpr int compare(const CharT* s) const
+    constexpr int compare(const_pointer s) const
     {
         return compare(basic_string_view(s));
     }
 
-    constexpr int compare(size_type pos, size_type count, const CharT* s) const
+    constexpr int compare(size_type pos, size_type count, const_pointer s) const
     {
         return substr(pos, count).compare(basic_string_view(s));
     }
 
     constexpr int compare(size_type pos1, size_type count1,
-                          const CharT* s, size_type count2)
+                          const_pointer s, size_type count2)
     {
         return substr(pos1, count1).compare(basic_string_view(s, count2));
     }
 
-    constexpr size_type find(basic_string_view v, size_type pos = 0) const
+    constexpr size_type find(basic_string_view v, size_type pos = 0) const noexcept
     {
         auto l = v.length();
-        for (auto t_pos = size_type{0}; t_pos - l < sz; ++t_pos)
+        for (auto t_pos = size_type{pos}; t_pos + l <= sz; ++t_pos)
         {
             int res = substr(t_pos, l).compare(v);
             if (res == 0)
@@ -161,10 +161,35 @@ public:
         return npos;
     }
 
-private:
+    constexpr size_type find(value_type c, size_type pos) const noexcept
+    {
+        return find(basic_string_view(&c, 1ull), pos);
+    }
 
-    const_pointer data_ptr;
+    constexpr size_type find(const_pointer s, size_type pos, size_type count) const
+    {
+        return find(basic_string_view(s, count), pos);
+    }
+
+    constexpr size_type find(const_pointer s, size_type pos = 0) const
+    {
+        return find(basic_string_view(s), pos);
+    }
+
+    constexpr size_type rfind(basic_string_view v, size_type pos = npos) const noexcept
+    {
+        // pos == npos ?? search from the end?
+        auto l = v.length();
+        auto last_pos = npos;
+
+        //for (auto tpos = size_type{std::min()})
+
+        return last_pos;
+    }
+
+private:
     size_type sz;
+    const_pointer data_ptr;
 };
 
 using string_view = basic_string_view<char>;

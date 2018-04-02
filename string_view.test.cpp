@@ -183,3 +183,23 @@ TEST_CASE("will allow comparing views")
         REQUIRE(result == 0);
     }
 }
+
+TEST_CASE("searching in view")
+{
+    SECTION("basic search using find method")
+    {
+        my::string_view mt = "aabbaccabababcbcaabcaaaaa";
+        my::string_view pattern = "aba";
+        auto pos = mt.find(pattern);
+        REQUIRE(pos == 7ull);
+    }
+
+    SECTION("finding self in self")
+    {
+        my::string_view mt = "abc";
+        my::string_view pattern = "abc";
+
+        auto pos = mt.find(pattern);
+        REQUIRE(pos == 0ull);
+    }
+}
