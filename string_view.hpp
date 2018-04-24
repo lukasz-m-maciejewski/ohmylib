@@ -150,18 +150,19 @@ public:
 
     constexpr size_type find(basic_string_view v, size_type pos = 0) const noexcept
     {
-        auto l = v.length();
-        for (auto t_pos = size_type{pos}; t_pos + l <= sz; ++t_pos)
+        if (sz < v.sz)
+            return npos;
+
+        for (auto t_pos = size_type{pos}; t_pos + v.sz <= sz; ++t_pos)
         {
-            int res = substr(t_pos, l).compare(v);
-            if (res == 0)
+            if (traits_type::compare(data_ptr + t_pos, v.data_ptr, v.sz) == 0)
                 return t_pos;
         }
 
         return npos;
     }
 
-    constexpr size_type find(value_type c, size_type pos) const noexcept
+    constexpr size_type find(value_type c, size_type pos = 0) const noexcept
     {
         return find(basic_string_view(&c, 1ull), pos);
     }
@@ -178,13 +179,83 @@ public:
 
     constexpr size_type rfind(basic_string_view v, size_type pos = npos) const noexcept
     {
-        // pos == npos ?? search from the end?
-        auto l = v.length();
-        auto last_pos = npos;
+        if (sz < v.sz)
+            return npos;
 
-        //for (auto tpos = size_type{std::min()})
+        auto t_pos = std::min(sz - v.sz, pos);
 
-        return last_pos;
+        do
+        {
+            if (traits_type::compare(data_ptr + t_pos, v.data_ptr, v.sz) == 0)
+                return t_pos;
+        }
+        while (t_pos-- > 0);
+
+        return npos;
+    }
+
+    constexpr size_type rfind(value_type c, size_type pos = npos) const noexcept
+    {
+        return rfind(basic_string_view(&c, 1), pos);
+    }
+
+    constexpr size_type rfind(const_pointer s, size_type pos, size_type count) const
+    {
+        return rfind(basic_string_view(s, count), pos);
+    }
+
+    constexpr size_type rfind(const_pointer s, size_type pos = npos) const
+    {
+        return rfind(basic_string_view(s), pos);
+    }
+
+    constexpr size_type find_first_of(basic_string_view v, size_type pos = 0) const noexcept
+    {
+        if (v.sz == size_type{0})
+            return npos;
+
+        for (size_type i = pos; i < sz; ++i)
+        {
+            if (v.find(data_ptr[i]) != npos)
+                return i;
+        }
+
+        return npos;
+    }
+
+    constexpr size_type find_first_of(value_type c, size_type pos = 0) const noexcept
+    {
+        return find_first_of(basic_string_view{&c, 1ull}, pos);
+    }
+
+    constexpr size_type find_first_of(const_pointer s, size_type pos, size_type count) const
+    {
+        return find_first_of(basic_string_view{s, count}, pos);
+    }
+
+    constexpr size_type find_first_of(const_pointer s, size_type pos = 0) const
+    {
+        return find_first_of(basic_string_view{s}, pos);
+    }
+
+    constexpr size_type find_last_of(basic_string_view v, size_type pos = npos) const noexcept
+    {
+        auto rbegin = std::min(pos, sz);
+
+        if (rbegin == 0)
+        {
+            if (v.find(data_ptr[rbegin]) != npos)
+                return 0;
+            else
+                return npos;
+        }
+
+        do
+        {
+            if (v.find(data_ptr[rbegin]) != npos)
+                return rbegin;
+        }
+        while (rbegin-- > 0);
     }
 
 private:

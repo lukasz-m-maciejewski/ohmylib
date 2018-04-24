@@ -1,6 +1,8 @@
 #include <catch/catch.hpp>
 
 #include "string_view.hpp"
+//#include <string_view>
+//namespace my = std;
 
 TEST_CASE("string_view construction")
 {
@@ -201,5 +203,110 @@ TEST_CASE("searching in view")
 
         auto pos = mt.find(pattern);
         REQUIRE(pos == 0ull);
+    }
+}
+
+TEST_CASE("reverse search in string view")
+{
+    SECTION("basic search")
+    {
+        my::string_view text = "abccabccab";
+        my::string_view patt = "ab";
+        auto pos = text.rfind(patt);
+        REQUIRE(pos == 8ull);
+    }
+
+    SECTION("finding self in self")
+    {
+        my::string_view text = "abc";
+        my::string_view patt = "abc";
+
+        auto pos = text.rfind(patt);
+        REQUIRE(pos == 0ull);
+    }
+
+    SECTION("pattern longer than text")
+    {
+        my::string_view text = "ab";
+        my::string_view patt = "abc";
+
+        auto pos = text.rfind(patt);
+        REQUIRE(pos == my::string_view::npos);
+    }
+
+    SECTION("no pattern in text")
+    {
+        my::string_view text = "abcdefghijklmnopqrstuwvxyz";
+        my::string_view patt = "cba";
+
+        auto pos = text.rfind(patt);
+        REQUIRE(pos == my::string_view::npos);
+    }
+
+    SECTION("no searching beyond pos")
+    {
+        my::string_view text = "abcdefghijklmnopqrstuwvxyz";
+        my::string_view patt = "xyz";
+
+        auto pos = text.rfind(patt, 20ull);
+        REQUIRE(pos == my::string_view::npos);
+    }
+
+    SECTION("pattern at the pos")
+    {
+        my::string_view text = "abcdefghijklmnopqrstuwvxyz";
+        my::string_view patt = "efg";
+
+        auto pos = text.rfind(patt, 4ull);
+        REQUIRE(pos == 4ull);
+    }
+
+    SECTION("single char search")
+    {
+        my::string_view text = "abcdefghijklmnopqrstuwvxyz";
+
+        auto pos = text.rfind('f', 10ull);
+        REQUIRE(pos == 5ull);
+    }
+
+    SECTION("from part of literal")
+    {
+        my::string_view text = "zzabdabfxxyyzz";
+
+        SECTION("starting at the very end")
+        {
+            auto pos = text.rfind("ab", 14ull);
+            REQUIRE(pos == 5ull);
+        }
+
+        SECTION("starting in the middle")
+        {
+            auto pos = text.rfind("abcdef", 4ull, 2ull);
+            REQUIRE(pos == 2ull);
+        }
+    }
+}
+
+TEST_CASE("find_first_of")
+{
+    SECTION("search using string_view")
+    {
+        my::string_view text = "abcdefghijklmnopqrstuwvxyz";
+
+        SECTION("expect to succeed")
+        {
+            my::string_view charset = "fzx11";
+
+            auto pos = text.find_first_of(charset);
+            REQUIRE(pos == 5ull);
+        }
+
+        SECTION("expect to fail")
+        {
+            my::string_view charset = "1234";
+
+            auto pos = text.find_first_of(charset);
+            REQUIRE(pos == my::string_view::npos);
+        }
     }
 }
