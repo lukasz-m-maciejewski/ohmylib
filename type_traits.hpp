@@ -6,7 +6,7 @@ namespace ohmy
 template <typename Type, Type parameter_value>
 struct integral_constant
 {
-    static constexpr auto value = Type{parameter_value};
+    static constexpr Type value = parameter_value;
     using value_type = Type;
     using type = integral_constant<Type, parameter_value>;
 
@@ -22,8 +22,8 @@ struct integral_constant
 };
 
 // static member type initialization??
-template <typename Type, Type parameter_value>
-constexpr Type integral_constant<Type, parameter_value>::value;
+// template <typename Type, Type parameter_value>
+// constexpr Type integral_constant<Type, parameter_value>::value;
 
 using true_type = integral_constant<bool, true>;
 using false_type = integral_constant<bool, false>;
@@ -46,14 +46,14 @@ struct is_base_of : public integral_constant<bool, __is_base_of(Base, Derived)>
 {
 };
 
-template <typename Condition, typename IfTrue, typename IfFalse>
+template <bool Condition, typename IfTrue, typename IfFalse>
 struct conditional
 {
     using type = IfTrue;
 };
 
 template <typename IfTrue, typename IfFalse>
-struct conditional
+struct conditional<false, IfTrue, IfFalse>
 {
     using type = IfFalse;
 };
@@ -80,13 +80,14 @@ template <typename Type>
 struct remove_volatile<Type volatile>
 {
     using type = Type;
-}
+};
 
 template <typename Type>
 struct remove_cv
 {
-    using type = typename remove_const<typename remove_volatile<Type>::type>::type;
-}
+    using type =
+        typename remove_const<typename remove_volatile<Type>::type>::type;
+};
 
 namespace detail
 {
@@ -104,14 +105,15 @@ struct operator_or<Bool1> : public Bool1
 };
 
 template <typename Bool1, typename Bool2>
-struct operator_or<Boolean1, Bool1>
+struct operator_or<Bool1, Bool2>
     : public conditional<Bool1::value, Bool1, Bool2>::type
 {
 };
 
 template <typename Bool1, typename Bool2, typename Bool3, typename... Bools>
-struct operator_or<Bool1, Bool2, Bool3, Bools>
-    : public conditional<Bool1::value, Bool1, or <Bool2, Bool3, Bools>>::type
+struct operator_or<Bool1, Bool2, Bool3, Bools...>
+    : public conditional<Bool1::value, Bool1,
+                         operator_or<Bool2, Bool3, Bools...>>::type
 {
 };
 
@@ -120,7 +122,7 @@ struct is_void_helper : public false_type
 {
 };
 
-template <typename>
+template <>
 struct is_void_helper<void> : public true_type
 {
 };
@@ -128,14 +130,82 @@ struct is_void_helper<void> : public true_type
 } // namespace detail
 
 template <typename Type>
-struct is_void : public detail::is_void_helper<typename remove_cv<Type>>::type
+struct is_void
+    : public detail::is_void_helper<typename remove_cv<Type>::type>::type
 {
 };
 
+template <typename Type>
+struct is_const : false_type
+{
+};
+
+template <typename Type>
+struct is_const<Type const> : true_type
+{
+};
+
+template <typename Type>
+struct is_lvalue_reference : false_type
+{
+};
+
+template <typename Type>
+struct is_lvalue_reference<Type&> : true_type
+{
+};
+
+template <typename Type>
+struct is_rvalue_reference : false_type
+{
+};
+
+template <typename Type>
+struct is_rvalue_reference<Type&&> : true_type
+{
+};
+
+template <typename Type>
+struct is_reference
+    : detail::operator_or<is_lvalue_reference<Type>, is_rvalue_reference<Type>>
+{
+};
+
+template <typename Type>
+struct is_function
+    : bool_constant<!is_const<Type const>::value && !is_reference<Type>::value>
+{
+};
+
+template <typename Type>
+struct is_array : public false_type
+{
+};
+
+namespace detail
+{
+template <typename Type>
+struct declval_protector
+{
+    static const bool stop = false;
+    static Type delegate();
+};
+} // namespace detail
+
+template <typename Type>
+inline Type declval() noexcept
+{
+    static_assert(detail::declval_protector<Type>::stop,
+                  "declval() should not be called in runtime context");
+    return detail::declval_protector<Type>::delegate();
+}
+
+namespace detail
+{
 template <typename From, typename To,
-          bool = detail::operator_or<
-              is_void<From>, is_function<To>,
-              is_array<To>::value> struct priv_is_convertible_helper
+          bool = detail::operator_or<is_void<From>, is_function<To>,
+                                     is_array<To>>::value>
+struct priv_is_convertible_helper
 {
     using type = typename is_void<To>::type;
 };
@@ -158,6 +228,7 @@ private:
 public:
     using type = decltype(test_function<From, To>(0));
 };
+} // namespace detail
 
 } // namespace ohmy
 
