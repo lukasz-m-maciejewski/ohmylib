@@ -3,6 +3,8 @@
 
 namespace ohmy
 {
+using size_t = unsigned long long int;
+
 template <typename Type, Type parameter_value>
 struct integral_constant
 {
@@ -41,10 +43,16 @@ struct is_same<Type, Type> : public true_type
 {
 };
 
+template <typename Type1, typename Type2>
+inline constexpr bool is_same_v = is_same<Type1, Type2>::value;
+
 template <typename Base, typename Derived>
 struct is_base_of : public integral_constant<bool, __is_base_of(Base, Derived)>
 {
 };
+
+template <typename Base, typename Derived>
+inline constexpr bool is_base_of_v = is_base_of<Base, Derived>::value;
 
 template <bool Condition, typename IfTrue, typename IfFalse>
 struct conditional
@@ -57,6 +65,9 @@ struct conditional<false, IfTrue, IfFalse>
 {
     using type = IfFalse;
 };
+
+template <bool Condition, typename IfTrue, typename IfFalse>
+using conditional_t = typename conditional<Condition, IfTrue, IfFalse>::type;
 
 template <typename Type>
 struct remove_const
@@ -71,6 +82,9 @@ struct remove_const<Type const>
 };
 
 template <typename Type>
+using remove_const_t = typename remove_const<Type>::type;
+
+template <typename Type>
 struct remove_volatile
 {
     using type = Type;
@@ -83,11 +97,17 @@ struct remove_volatile<Type volatile>
 };
 
 template <typename Type>
+using remove_volatile_t = typename remove_volatile<Type>::type;
+
+template <typename Type>
 struct remove_cv
 {
     using type =
         typename remove_const<typename remove_volatile<Type>::type>::type;
 };
+
+template <typename Type>
+using remove_cv_t = typename remove_cv<Type>::type;
 
 namespace detail
 {
@@ -116,6 +136,10 @@ struct operator_or<Bool1, Bool2, Bool3, Bools...>
                          operator_or<Bool2, Bool3, Bools...>>::type
 {
 };
+
+template <typename Bool>
+struct operator_not : bool_constant<!Bool::value>
+{};
 
 template <typename>
 struct is_void_helper : public false_type
@@ -177,10 +201,67 @@ struct is_function
 {
 };
 
-template <typename Type>
-struct is_array : public false_type
+template <typename>
+struct is_array : false_type
 {
 };
+
+template <typename Type, size_t Size>
+struct is_array<Type[Size]> : true_type
+{
+};
+
+template <typename Type>
+struct is_array<Type[]> : true_type
+{
+};
+
+template <typename Type>
+inline constexpr bool is_array_v = is_array<Type>::value;
+
+template <typename Type>
+struct is_object : detail::operator_not<detail::operator_or<is_function<Type>,
+                                                            is_reference<Type>,
+                                                            is_void<Type>>>::type
+{
+};
+
+template <typename Type>
+inline constexpr bool is_object_v = is_object<Type>::value;
+
+namespace detail
+{
+template <typename Type>
+struct is_referencable : operator_or<is_object<Type>, is_reference<Type>>::type
+{
+};
+
+template <typename Type>
+inline constexpr bool is_referencable_v = is_referencable<Type>::value;
+
+template <typename Type, bool = is_referencable_v<Type>>
+struct add_lvalue_reference_helper
+{
+    using type = Type;
+};
+
+template <typename Type>
+struct add_lvalue_reference_helper<Type, true>
+{
+    using type = Type&;
+};
+}
+
+template <typename Type>
+struct add_lvalue_reference : detail::add_lvalue_reference_helper<Type>
+{};
+
+namespace detail
+{
+template <typename Type, bool = is_referencable<Type>::value>
+struct add_rvalue_reference_helper
+{};
+}
 
 namespace detail
 {
