@@ -92,3 +92,7 @@ static_assert(ohmy::is_object_v<int> == true);
 static_assert(ohmy::is_object_v<float&> == false);
 
 static_assert(ohmy::is_same_v<ohmy::add_lvalue_reference<int>::type, int&>);
+static_assert(ohmy::is_same_v<ohmy::add_lvalue_reference_t<int>, int&>);
+
+static_assert(ohmy::is_same_v<ohmy::add_rvalue_reference<int>::type, int&&>);
+static_assert(ohmy::is_same_v<ohmy::add_rvalue_reference_t<int>, int&&>);

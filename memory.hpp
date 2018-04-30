@@ -11,7 +11,7 @@ struct default_delete
 constexpr default_delete() noexcept = default;
 
 template <typename U, 
-typename = typename std::enable_if<std::is_convertible<U, T>::value>::type>
+typename = typename std::enable_if<ohmy::is_convertible<U, T>::value>::type>
 default_delete(const default_delete<U>&) noexcept
 {
 }

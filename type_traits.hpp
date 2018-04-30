@@ -139,7 +139,8 @@ struct operator_or<Bool1, Bool2, Bool3, Bools...>
 
 template <typename Bool>
 struct operator_not : bool_constant<!Bool::value>
-{};
+{
+};
 
 template <typename>
 struct is_void_helper : public false_type
@@ -158,6 +159,9 @@ struct is_void
     : public detail::is_void_helper<typename remove_cv<Type>::type>::type
 {
 };
+
+template <typename Type>
+inline constexpr bool is_void_v = is_void<Type>::value;
 
 template <typename Type>
 struct is_const : false_type
@@ -220,9 +224,9 @@ template <typename Type>
 inline constexpr bool is_array_v = is_array<Type>::value;
 
 template <typename Type>
-struct is_object : detail::operator_not<detail::operator_or<is_function<Type>,
-                                                            is_reference<Type>,
-                                                            is_void<Type>>>::type
+struct is_object
+    : detail::operator_not<detail::operator_or<
+          is_function<Type>, is_reference<Type>, is_void<Type>>>::type
 {
 };
 
@@ -250,18 +254,38 @@ struct add_lvalue_reference_helper<Type, true>
 {
     using type = Type&;
 };
-}
+} // namespace detail
 
 template <typename Type>
 struct add_lvalue_reference : detail::add_lvalue_reference_helper<Type>
-{};
+{
+};
+
+template <typename Type>
+using add_lvalue_reference_t = typename add_lvalue_reference<Type>::type;
 
 namespace detail
 {
 template <typename Type, bool = is_referencable<Type>::value>
 struct add_rvalue_reference_helper
-{};
-}
+{
+    using type = Type;
+};
+
+template <typename Type>
+struct add_rvalue_reference_helper<Type, true>
+{
+    using type = Type&&;
+};
+} // namespace detail
+
+template <typename Type>
+struct add_rvalue_reference : detail::add_rvalue_reference_helper<Type>
+{
+};
+
+template <typename Type>
+using add_rvalue_reference_t = typename add_rvalue_reference<Type>::type;
 
 namespace detail
 {
@@ -269,12 +293,12 @@ template <typename Type>
 struct declval_protector
 {
     static const bool stop = false;
-    static Type delegate();
+    static add_rvalue_reference_t<Type> delegate();
 };
 } // namespace detail
 
 template <typename Type>
-inline Type declval() noexcept
+inline add_rvalue_reference_t<Type> declval() noexcept
 {
     static_assert(detail::declval_protector<Type>::stop,
                   "declval() should not be called in runtime context");
@@ -286,13 +310,13 @@ namespace detail
 template <typename From, typename To,
           bool = detail::operator_or<is_void<From>, is_function<To>,
                                      is_array<To>>::value>
-struct priv_is_convertible_helper
+struct is_convertible_helper
 {
     using type = typename is_void<To>::type;
 };
 
 template <typename From, typename To>
-struct priv_is_convertible_helper<From, To, false>
+struct is_convertible_helper<From, To, false>
 {
 private:
     template <typename To_Internal>
@@ -310,6 +334,25 @@ public:
     using type = decltype(test_function<From, To>(0));
 };
 } // namespace detail
+
+template <typename From, typename To>
+struct is_convertible : detail::is_convertible_helper<From, To>::type
+{
+};
+
+template <typename From, typename To>
+inline constexpr bool is_convertible_v = is_convertible<From, To>::value;
+
+template <bool, typename Type = void>
+struct enable_if
+{
+};
+
+template <typename Type>
+struct enable_if<true, Type>
+{
+    using type = Type;
+};
 
 } // namespace ohmy
 
