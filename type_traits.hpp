@@ -142,6 +142,30 @@ struct operator_not : bool_constant<!Bool::value>
 {
 };
 
+template <typename...>
+struct operator_and;
+
+template <>
+struct operator_and<> : true_type
+{
+};
+
+template <typename Bool1>
+struct operator_and<Bool1> : Bool1
+{
+};
+
+template <typename Bool1, typename Bool2>
+struct operator_and<Bool1, Bool2> : conditional_t<Bool1::value, Bool2, Bool1>
+{
+};
+
+template <typename Bool1, typename Bool2, typename Bool3, typename... Bools>
+struct operator_and<Bool1, Bool2, Bool3, Bools...>
+    : conditional_t<Bool1::value, operator_and<Bool2, Bool3, Bools...>, Bool1>
+{
+};
+
 template <typename>
 struct is_void_helper : public false_type
 {
@@ -223,6 +247,27 @@ struct is_array<Type[]> : true_type
 template <typename Type>
 inline constexpr bool is_array_v = is_array<Type>::value;
 
+namespace detail
+{
+template <typename Type>
+struct is_pointer_helper : false_type
+{
+};
+
+template <typename Type>
+struct is_pointer_helper<Type*> : true_type
+{
+};
+} // namespace detail
+
+template <typename Type>
+struct is_pointer : detail::is_pointer_helper<remove_cv_t<Type>>::type
+{
+};
+
+template <typename Type>
+inline constexpr bool is_pointer_v = is_pointer<Type>::value;
+
 template <typename Type>
 struct is_object
     : detail::operator_not<detail::operator_or<
@@ -286,6 +331,27 @@ struct add_rvalue_reference : detail::add_rvalue_reference_helper<Type>
 
 template <typename Type>
 using add_rvalue_reference_t = typename add_rvalue_reference<Type>::type;
+
+template <typename Type>
+struct remove_reference
+{
+    using type = Type;
+};
+
+template <typename Type>
+struct remove_reference<Type&>
+{
+    using type = Type;
+};
+
+template <typename Type>
+struct remove_reference<Type&&>
+{
+    using type = Type;
+};
+
+template <typename Type>
+using remove_reference_t = typename remove_reference<Type>::type;
 
 namespace detail
 {
@@ -353,6 +419,145 @@ struct enable_if<true, Type>
 {
     using type = Type;
 };
+
+template <bool Condition, typename Type = void>
+using enable_if_t = typename enable_if<Condition, Type>::type;
+
+template <typename...>
+using void_t = void;
+
+template <typename>
+struct rank : integral_constant<size_t, size_t{}>
+{
+};
+
+template <typename Type, size_t Size>
+struct rank<Type[Size]> : integral_constant<size_t, 1 + rank<Type>::value>
+{
+};
+
+template <typename Type>
+struct rank<Type[]> : integral_constant<size_t, 1 + rank<Type>::value>
+{
+};
+
+template <typename, unsigned>
+struct extent : integral_constant<size_t, 0ull>
+{
+};
+
+template <typename Type, unsigned Uint, size_t Size>
+struct extent<Type[Size], Uint>
+    : integral_constant<size_t,
+                        Uint == 0 ? Size : extent<Type, Uint - 1>::value>
+{
+};
+
+template <typename Type, unsigned Uint>
+struct extent<Type[], Uint>
+    : integral_constant<size_t, Uint == 0 ? 0 : extent<Type, Uint - 1>::value>
+{
+};
+
+template <typename Type, unsigned Index = 0>
+inline constexpr size_t extent_v = extent<Type, Index>::value;
+
+template <typename Type>
+struct remove_extent
+{
+    using type = Type;
+};
+
+template <typename Type, size_t Size>
+struct remove_extent<Type[Size]>
+{
+    using type = Type;
+};
+
+template <typename Type>
+struct remove_extent<Type[]>
+{
+    using type = Type;
+};
+
+template <typename Type>
+using remove_extent_t = typename remove_extent<Type>::type;
+
+template <typename Type>
+struct remove_all_extents
+{
+    using type = Type;
+};
+
+template <typename Type, size_t Size>
+struct remove_all_extents<Type[Size]>
+{
+    using type = typename remove_all_extents<Type>::type;
+};
+
+template <typename Type>
+struct remove_all_extents<Type[]>
+{
+    using type = typename remove_all_extents<Type>::type;
+};
+
+template <typename Type>
+using remove_all_extents_t = typename remove_all_extents<Type>::type;
+
+namespace detail
+{
+template <typename Type>
+struct is_array_known_bounds : bool_constant<(extent_v<Type>> 0)>
+{
+};
+
+struct do_is_default_constructible_impl
+{
+    template <typename Type, typename = decltype(Type())>
+    static true_type test_function(int);
+
+    template <typename>
+    static false_type test_function(...);
+};
+
+template <typename Type>
+struct is_default_constructible_impl : do_is_default_constructible_impl
+{
+    using type = decltype(test_function<Type>(0));
+};
+
+template <typename Type>
+struct is_default_constructible_atom
+    : operator_and<operator_not<is_void<Type>>,
+                   is_default_constructible_impl<Type>>
+{
+};
+
+template <typename Type, bool = is_array_v<Type>>
+struct is_default_constructible_safe;
+
+template <typename Type>
+struct is_default_constructible_safe<Type, true>
+    : operator_and<is_array_known_bounds<Type>,
+                   is_default_constructible_atom<remove_all_extents_t<Type>>>
+{
+};
+
+template <typename Type>
+struct is_default_constructible_safe<Type, false>
+    : is_default_constructible_atom<Type>::type
+{
+};
+
+} // namespace detail
+
+template <typename Type>
+struct is_default_constructible : detail::is_default_constructible_safe<Type>::type
+{
+};
+
+template <typename Type>
+inline constexpr bool is_default_constructible_v = is_default_constructible<Type>::value;
 
 } // namespace ohmy
 

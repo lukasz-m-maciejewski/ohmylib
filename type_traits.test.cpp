@@ -96,3 +96,46 @@ static_assert(ohmy::is_same_v<ohmy::add_lvalue_reference_t<int>, int&>);
 
 static_assert(ohmy::is_same_v<ohmy::add_rvalue_reference<int>::type, int&&>);
 static_assert(ohmy::is_same_v<ohmy::add_rvalue_reference_t<int>, int&&>);
+
+static_assert(ohmy::is_convertible<int, float>::value == true);
+static_assert(ohmy::is_convertible_v<int, float> == true);
+static_assert(ohmy::is_convertible<float, int>::value == true);
+static_assert(ohmy::is_convertible_v<float, int> == true);
+
+static_assert(ohmy::is_convertible<int(*)(int), double*>::value == false);
+static_assert(ohmy::is_convertible_v<int(*)(int), double*> == false);
+
+struct AA
+{
+    
+};
+
+struct BB
+{
+    operator AA ();
+};
+
+struct CC
+{
+    CC(const AA&);
+};
+
+struct DD
+{
+};
+
+static_assert(ohmy::is_convertible_v<AA, BB> == false);
+static_assert(ohmy::is_convertible_v<BB, AA> == true);
+
+static_assert(ohmy::is_convertible_v<AA, CC> == true);
+static_assert(ohmy::is_convertible_v<CC, AA> == false);
+
+static_assert(ohmy::is_convertible_v<BB, CC> == false);
+static_assert(ohmy::is_convertible_v<CC, BB> == false);
+
+static_assert(ohmy::is_convertible_v<AA, DD> == false);
+static_assert(ohmy::is_convertible_v<DD, AA> == false);
+
+static_assert(ohmy::is_convertible_v<AA, AA> == true);
+
+static_assert(ohmy::is_same_v<ohmy::remove_all_extents_t<int[][1][123]>, int>);
