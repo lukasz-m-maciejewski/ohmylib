@@ -208,6 +208,9 @@ struct is_lvalue_reference<Type&> : true_type
 };
 
 template <typename Type>
+inline constexpr bool is_lvalue_reference_v = is_lvalue_reference<Type>::value;
+
+template <typename Type>
 struct is_rvalue_reference : false_type
 {
 };
@@ -218,16 +221,25 @@ struct is_rvalue_reference<Type&&> : true_type
 };
 
 template <typename Type>
+inline constexpr bool is_rvalue_reference_v = is_rvalue_reference<Type>::value;
+
+template <typename Type>
 struct is_reference
     : detail::operator_or<is_lvalue_reference<Type>, is_rvalue_reference<Type>>
 {
 };
 
 template <typename Type>
+inline constexpr bool is_reference_v = is_reference<Type>::value;
+
+template <typename Type>
 struct is_function
     : bool_constant<!is_const<Type const>::value && !is_reference<Type>::value>
 {
 };
+
+template <typename Type>
+inline constexpr bool is_function_v = is_function<Type>::value;
 
 template <typename>
 struct is_array : false_type
@@ -552,12 +564,66 @@ struct is_default_constructible_safe<Type, false>
 } // namespace detail
 
 template <typename Type>
-struct is_default_constructible : detail::is_default_constructible_safe<Type>::type
+struct is_default_constructible
+    : detail::is_default_constructible_safe<Type>::type
 {
 };
 
 template <typename Type>
-inline constexpr bool is_default_constructible_v = is_default_constructible<Type>::value;
+inline constexpr bool is_default_constructible_v =
+    is_default_constructible<Type>::value;
+
+namespace detail
+{
+template <typename From, typename To>
+inline constexpr bool = (not (is_void_v<From> or is_function_v<From>)) ? ;
+
+struct do_is_nary_constructible_impl
+{
+    template <typename Type, typename... Args,
+              typename = decltype(Type(declval<Args>()...))>
+    static true_type test_function(int);
+
+    template <typename, typename...>
+    static false_type test_function(...);
+};
+
+template <typename Type, typename... Args>
+struct is_nary_constructible_impl : do_is_nary_constructible_impl
+{
+    using type = decltype(test_function<Type, Args...>(0));
+};
+
+template <typename Type, typename... Args>
+struct is_nary_constructible : is_nary_constructible_impl<Type, Args...>::type
+{
+    static_assert(sizeof...(Args) > 1);
+};
+} // namespace detail
+
+template <typename Type, typename... Arguments>
+struct is_nothrow_constructible
+    : operator_and<is_constructible<Type, Args...>,
+                   detail::is_nothrow_constructible_impl<Type, Args...>>
+{
+};
+
+namespace detail
+{
+template <typename Type, bool = is_referencable_v<Type>>
+struct is_nothrow_move_constructible_impl;
+
+template <typename Type>
+struct is_nothrow_move_constructible_impl<Type, false> : false_type
+{
+};
+
+template <typename Type>
+struct is_nothrow_move_constructible_impl<Type, true>
+    : is_nothrow_constructible<Type, Type&&>
+{
+};
+} // namespace detail
 
 } // namespace ohmy
 
