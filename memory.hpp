@@ -163,6 +163,106 @@ public:
         static_assert(not is_reference_v<deleter_type>,
                       "rvalue deleter bound to reference");
     }
+
+    template <typename U = Deleter, typename = DeleterConstraint<U>>
+    constexpr unique_ptr(nullptr_t) noexcept : unique_ptr()
+    {
+    }
+
+    unique_ptr(unique_ptr&& up) noexcept
+        : m_impl{up.release(), forward<deleter_type>(up.get_deleter())}
+    {
+    }
+
+    template <
+        typename U, typename E,
+        typename = detail::require_t<
+            safe_conversion_up<U, E>,
+            typename conditional<is_reference_v<Deleter>, is_same<E, Deleter>,
+                                 is_convertible<E, Deleter>>::type>>
+    unique_ptr(unique_ptr<U, E>&& up) noexcept
+        : m_impl{up.release(), forward<E>(up.get_deleter())}
+    {
+    }
+
+    ~unique_ptr() noexcept
+    {
+        auto& ptr = m_impl.get_ptr();
+        if (ptr != nullptr)
+        {
+            get_deleter()(ptr);
+            ptr = pointer{};
+        }
+    }
+
+    unique_ptr& operator=(unique_ptr&& up) noexcept
+    {
+        reset(up.release());
+        get_deleter() = forward<deleter_type>(up.get_deleter());
+        return *this;
+    }
+
+    template <typename U, typename E>
+    enable_if_t<safe_conversion_v<U, E> and is_assignable_v<deleter_type&, E&&>,
+                unique_ptr&>
+    operator=(unique_ptr<U, E> up) noexcept
+    {
+        reset(up.release());
+        get_deleter() = forward<E>(up.get_deleter());
+        return *this;
+    }
+
+    unique_ptr& operator=(nullptr_t) noexcept
+    {
+        reset();
+        return *this;
+    }
+
+    add_lvalue_reference_t<element_type> operator*() const
+    {
+        *get();
+    }
+
+    pointer operator->() const noexcept
+    {
+        return get();
+    }
+
+    pointer get() const noexcept
+    {
+        return m_impl.get_ptr();
+    }
+
+    deleter_type& get_deleter() noexcept
+    {
+        return m_impl.get_deleter();
+    }
+
+    const deleter_type& get_deleter() const noexcept
+    {
+        return m_impl.get_deleter();
+    }
+
+    explicit operator bool() const noexcept
+    {
+        return (get() != pointer{});
+    }
+
+    pointer release() noexcept
+    {
+        pointer p = get();
+        m_impl.m_ptr() = pointer{};
+        return p;
+    }
+
+    void reset(pointer p = pointer{}) noexcept
+    {
+        swap(m_impl.get_ptr(), p);
+        if (p != pointer{})
+        {
+            get_deleter()(p);
+        }
+    }
 };
 
 } // namespace ohmy

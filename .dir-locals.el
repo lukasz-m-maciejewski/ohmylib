@@ -2,6 +2,6 @@
 ;;; For more information see (info "(emacs) Directory Variables")
 
 ((c++-mode
-  (cmake-ide-project-dir . "/home/lukaszm/projects/string_view")
-  (cmake-ide-build-dir .   "/home/lukaszm/projects/string_view/build")))
-
+  (flycheck-gcc-language-standard . "c++17")
+  (cmake-ide-project-dir . "/home/lukaszm/projects/ohmylib")
+  (cmake-ide-build-dir . "/home/lukaszm/projects/ohmylib/build")))

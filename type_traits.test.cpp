@@ -8,7 +8,7 @@ static_assert(ohmy::is_same<int, float>::value == false, "");
 static_assert(ohmy::is_same_v<int, int> == true, "");
 static_assert(ohmy::is_same_v<int, float> == false, "");
 
-struct A 
+struct A
 {
     void foo();
 };
@@ -107,7 +107,7 @@ static_assert(ohmy::is_convertible_v<int(*)(int), double*> == false);
 
 struct AA
 {
-    
+
 };
 
 struct BB
@@ -139,3 +139,17 @@ static_assert(ohmy::is_convertible_v<DD, AA> == false);
 static_assert(ohmy::is_convertible_v<AA, AA> == true);
 
 static_assert(ohmy::is_same_v<ohmy::remove_all_extents_t<int[][1][123]>, int>);
+
+enum class Fake
+{
+    This,
+    That
+};
+
+static_assert(ohmy::is_arithmetic_v<float> == true);
+static_assert(ohmy::is_arithmetic_v<float*> == false);
+static_assert(ohmy::is_arithmetic_v<int> == true);
+static_assert(ohmy::is_arithmetic_v<BB> == false);
+static_assert(ohmy::is_arithmetic_v<Fake> == false);
+static_assert(ohmy::is_arithmetic_v<int[]> == false);
+static_assert(ohmy::is_arithmetic_v<int[4]> == false);

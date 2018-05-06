@@ -31,6 +31,29 @@ inline constexpr bool move_if_noexcept_condition_v =
     (not is_nothrow_move_constructible_v<Type> and
      is_copy_constructible_v<Type>);
 }
+
+template <typename Type>
+auto move_if_noexcept(Type& x) noexcept
+    -> conditional_t<detail::move_if_noexcept_condition_v<Type>, const Type&,
+                     Type&&>
+{
+    return move(x);
+}
+
+// clang-format off
+template <typename Type>
+inline enable_if_t<(not detail::is_tuple_like_v<Type>)
+                   and is_move_constructible_v<Type>
+                   and is_move_assignable_v<Type>>
+swap(Type& a, Type& b) noexcept(is_nothrow_move_constructible_v<Type>
+                                and is_nothrow_move_assignable_v<Type>)
+{
+    Type tmp = move(a);
+    a = move(b);
+    b = move(tmp);
+}
+
+// clang-format on
 } // namespace ohmy
 
 #endif // OHMY_UTILITY_HPP
