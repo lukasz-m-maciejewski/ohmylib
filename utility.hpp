@@ -52,7 +52,6 @@ swap(Type& a, Type& b) noexcept(is_nothrow_move_constructible_v<Type>
     a = move(b);
     b = move(tmp);
 }
-
 // clang-format on
 } // namespace ohmy
 

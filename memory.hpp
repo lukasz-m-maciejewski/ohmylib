@@ -257,12 +257,22 @@ public:
 
     void reset(pointer p = pointer{}) noexcept
     {
+        using ohmy::swap;
         swap(m_impl.get_ptr(), p);
         if (p != pointer{})
         {
             get_deleter()(p);
         }
     }
+
+    void swap(unique_ptr& up) noexcept
+    {
+        using ohmy::swap;
+        swap(m_impl, up.m_impl);
+    }
+
+    unique_ptr(const unique_ptr&) = delete;
+    unique_ptr& operator=(const unique_ptr&) = delete;
 };
 
 } // namespace ohmy
