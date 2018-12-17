@@ -1030,6 +1030,14 @@ namespace detail
 template <typename Type>
 inline constexpr bool is_tuple_like_v = false;
 }
+
+template <typename Type>
+struct is_trivially_copiable
+    : public integral_constant<bool, __is_trivially_copyable(Type)>
+{};
+
+template <typename Type>
+inline constexpr bool is_trivially_copiable_v = (__is_trivially_copyable(Type));
 } // namespace ohmy
 
 #endif // MY_TYPE_TRAITS_HPP
