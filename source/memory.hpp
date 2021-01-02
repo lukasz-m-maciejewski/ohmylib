@@ -275,5 +275,14 @@ public:
     unique_ptr& operator=(const unique_ptr&) = delete;
 };
 
+template <typename Type>
+inline constexpr Type* addressof(Type& r) noexcept
+{
+    return __builtin_addressof(r);
+}
+
+template <typename Type>
+const Type* addressof(const Type&&) = delete;
+
 } // namespace ohmy
 #endif // MY_MEMORY_HPP

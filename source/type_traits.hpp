@@ -1000,6 +1000,19 @@ struct negation : detail::operator_not<Cond>
 {
 };
 
+namespace detail
+{
+template <typename Type>
+struct success_type
+{
+    using type = Type;
+};
+
+struct failure_type
+{
+};
+} // namespace detail
+
 template <typename Cond>
 inline constexpr bool negation_v = negation<Cond>::value;
 
@@ -1034,10 +1047,135 @@ inline constexpr bool is_tuple_like_v = false;
 template <typename Type>
 struct is_trivially_copiable
     : public integral_constant<bool, __is_trivially_copyable(Type)>
-{};
+{
+};
 
 template <typename Type>
 inline constexpr bool is_trivially_copiable_v = (__is_trivially_copyable(Type));
+
+namespace detail
+{
+template <typename Type, bool = is_referencable_v<Type> or is_void_v<Type>>
+struct add_pointer_helper
+{
+    using type = Type;
+};
+
+template <typename Type>
+struct add_pointer_helper<Type, true>
+{
+    using type = remove_reference_t<Type>*;
+};
+} // namespace detail
+
+template <typename Type>
+struct add_pointer : public detail::add_pointer_helper<Type>
+{
+};
+
+template <typename Type>
+using add_pointer_t = typename add_pointer<Type>::type;
+
+namespace detail
+{
+template <typename Type, bool IsArray = is_array_v<Type>,
+          bool IsFunction = is_function_v<Type>>
+struct decay_selector;
+
+template <typename Type>
+struct decay_selector<Type, false, false>
+{
+    using type = remove_cv_t<Type>;
+};
+
+template <typename Type>
+struct decay_selector<Type, true, false>
+{
+    using type = remove_extent_t<Type>*;
+};
+
+template <typename Type>
+struct decay_selector<Type, false, true>
+{
+    using type = add_pointer_t<Type>;
+};
+} // namespace detail
+
+template <typename Type>
+class decay
+{
+    using remove_type = remove_reference_t<Type>;
+
+public:
+    using type = typename detail::decay_selector<remove_type>::type;
+};
+
+template <typename Type>
+using decay_t = typename decay<Type>::type;
+
+template <typename Type>
+class reference_wrapper;
+
+namespace detail
+{
+
+struct invoke_memfun_ref
+{
+};
+struct invoke_memfun_deref
+{
+};
+struct invoke_memobj_ref
+{
+};
+struct invoke_memobj_deref
+{
+};
+struct invoke_other
+{
+};
+
+template <typename Type, typename Tag>
+struct invoke_result_success : success_type<Type>
+{
+    using invoke_type = Tag;
+};
+
+struct invoke_result_memfun_ref_impl
+{
+    template <typename MemberFunction, typename Type, typename... ArgumentTypes>
+    static invoke_result_success<decltype((ohmy::declval<Type>().*
+                                           ohmy::declval<MemberFunction>())(
+                                     ohmy::declval<ArgumentTypes>()...)),
+                                 invoke_memfun_ref>
+    private_test(int);
+
+    template <typename...>
+    static failure_type private_test(...);
+};
+
+template <typename Type, typename OtherType = decay_t<Type>>
+struct inv_unwrap
+{
+    using type = Type;
+};
+
+template <typename Type, typename OtherType>
+struct inv_unwrap<Type, reference_wrapper<OtherType>>
+{
+    using type = OtherType&;
+};
+
+template <typename Type, typename OtherType = decay_t<Type>>
+using inv_unwrap_t = typename inv_unwrap<Type, OtherType>::type;
+
+template <bool, bool, typename Callable, typename... ArgumentTypes>
+struct invoke_result_impl
+{
+    using type = failure_type;
+};
+
+} // namespace detail
 } // namespace ohmy
 
 #endif // MY_TYPE_TRAITS_HPP
